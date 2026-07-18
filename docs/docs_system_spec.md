@@ -12,6 +12,14 @@
 
 Windows は **重い処理（LLM・解析・DB）に集中**させる。Web の常時ホスティングは Pi に任せる。
 
+## 2.1. 開発・デモ → 本番の流れ（ADR-007）
+
+1. **デスクトップ**: 実装とデモ（ローカル k3s 系）。動作確認後 GitHub へ Push
+2. **ゲーミングノート（本番）**: `git pull`（または clone）し、private な Secret / IP 設定を入れたうえで k3s + Ollama を起動
+3. **Raspberry Pi（本番 Web）**: フロントを配置し、Tailscale 経由でノート上の API を呼ぶ
+
+デモ用 DB・ログに本番の個人データを入れない。
+
 ## 3. ネットワーク
 - クライアント ↔ 各ノードは **Tailscale 等の私有網**を基本（インターネットへ API/Ollama を直接公開しない）
 - 実 IP はリポジトリに書かない（`docs/security.md` / `docs/inventory.example.md`）

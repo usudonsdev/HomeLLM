@@ -19,13 +19,13 @@
 
 | ノード | 担当 | 禁止 |
 |--------|------|------|
-| **Raspberry Pi** | Web フロント常時配信、Tailscale、WOL | DB / Ollama / 動画 Job / 重い API |
-| **Windows** | k3s（API・Postgres・video Jobs）、ホスト Ollama | Web の常時ホスティングをここに戻さない |
+| **デスクトップ** | 開発・デモ（ローカル k3s 系）、GitHub Push | 本番個人データ、実インフラ秘密のコミット |
+| **Raspberry Pi** | 本番 Web 常時配信、Tailscale、WOL | DB / Ollama / 動画 Job / 重い API |
+| **Windows ノート** | **本番** k3s（API・Postgres・video Jobs）、ホスト Ollama | Web の常時ホスティング |
 
-Windows は **重い処理に集中**させる（ADR-005）。
+フロー: **デスクトップでデモ → GitHub → ノートで pull して本番**（ADR-007）。Windows は重い処理に集中（ADR-005）。
 
 ## 公開リポ・セキュリティ（最優先）
-
 詳細は `docs/security.md`。要約:
 
 1. 実 LAN/Tailscale IP、MAC、パスワード、kubeconfig、経験ログ生データをコミットしない
@@ -55,9 +55,10 @@ Windows は **重い処理に集中**させる（ADR-005）。
 
 ### 実装フェーズ
 
-1. Windows k3s に API + Postgres。Pi に最小 Web
-2. Valorant pipeline
-3. TFT およびタイトル追加
+1. **デスクトップでデモ**: API + Postgres（ローカル k3s または暫定スモーク）。必要なら簡易 Web
+2. **ノートへ本番移植**: GitHub から取得、k3s + Ollama + private 設定
+3. **Pi に本番 Web** を載せる
+4. Valorant pipeline → TFT 等
 
 ## エージェント作業ルール
 
