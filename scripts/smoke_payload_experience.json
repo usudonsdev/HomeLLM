@@ -1,0 +1,10 @@
+{
+  "category": "project",
+  "title": "HomeLLM smoke experience",
+  "org_name": "personal",
+  "start_date": "2026-01-01",
+  "description": "minimal smoke test experience log",
+  "lessons_learned": "ship a tiny vertical slice first",
+  "emotional_log": "worried while waiting for Docker, relieved when it worked",
+  "tags": ["トラブルシューティング", "Docker"]
+}

@@ -1,0 +1,59 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials*.json
+docs/private/
+**/secrets.yaml
+**/secret.yaml
+!**/*.example.yaml
+!**/*.example.yml
+
+# OS / editor
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+
+# Node
+node_modules/
+.next/
+out/
+coverage/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Docker / local data
+*.log
+tmp/
+data/
+postgres-data/
+
+# Media (keep out of git by default)
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.webm
+
+# Kubernetes local overrides
+**/secrets.yaml
+**/secret.yaml

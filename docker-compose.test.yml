@@ -1,0 +1,37 @@
+# Local smoke only. Weak credentials are intentional and must NEVER be reused in production.
+# Production: k3s on Windows + Web on Raspberry Pi (see docs/).
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: homellm
+      POSTGRES_PASSWORD: local-smoke-only
+      POSTGRES_DB: homellm
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./services/job-hunting-api/sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - homellm_pg_test:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U homellm -d homellm"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./services/job-hunting-api
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg://homellm:local-smoke-only@db:5432/homellm
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_MODEL: qwen3.5:9b
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  homellm_pg_test:
