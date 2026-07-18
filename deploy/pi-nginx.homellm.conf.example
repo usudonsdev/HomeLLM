@@ -1,0 +1,14 @@
+# /etc/nginx/sites-available/homellm  (example for Raspberry Pi)
+# Static UI only. Do not proxy multi-GB video uploads through the Pi.
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+
+    root /var/www/homellm;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ $uri/index.html =404;
+    }
+}

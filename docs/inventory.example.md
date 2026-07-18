@@ -10,4 +10,7 @@ Never commit real LAN / Tailscale IPs, MAC addresses, or credentials.
 
 ## Raspberry Pi (edge)
 - Tailscale IP: `<PI_TAILSCALE_IP>`
+- SSH: `pi@<PI_TAILSCALE_IP>` (from desktop)
 - Roles: Tailscale gateway, WOL sender, **Web frontend host**
+- Web root example: `/var/www/homellm`
+- Deploy from desktop: `scripts/deploy-web-pi.ps1` + `.local/pi-deploy.env`

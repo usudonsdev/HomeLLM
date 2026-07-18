@@ -40,6 +40,7 @@
 3. RAG は最大 3〜5 件、`lessons_learned` + `emotional_log` のみ注入
 4. 本番オーケストレータは **Windows 上の k3s**（デモはデスクトップの **k3d**）。Swarm 不採用。Compose は局所フォールバックのみ
 5. 動画はゲーム別 pipeline（Valorant ロゴ分割 → Job、TFT は時間セグメント）
+6. **大容量動画はホスト `media/inbox/` へ直接配置**。API はメタデータ登録のみ（ADR-008）。Pi / Git にバイナリを流さない
 
 ## 管理プレーン（機能より先に完了させる対象）
 
@@ -49,6 +50,9 @@
 | Namespace / Quota / LimitRange | `scripts/cluster-apply-base.ps1` |
 | Secret 生成（`.local/`） | `scripts/secrets-materialize-demo.ps1` |
 | job-hunting 適用 | `scripts/cluster-apply-job-hunting.ps1` |
+| video-analysis 適用 | `scripts/cluster-apply-video-analysis.ps1` |
+| Valorant デモ | `scripts/demo-valorant-ingest.ps1` |
+| Pi へ Web デプロイ | `scripts/deploy-web-pi.ps1`（`.local/pi-deploy.env`） |
 | 破棄 | `scripts/cluster-destroy-demo.ps1` |
 
 詳細は `k8s/README.md`。
@@ -69,7 +73,7 @@
 
 1. **デスクトップでデモ**: API + Postgres（ローカル k3s または暫定スモーク）。必要なら簡易 Web
 2. **ノートへ本番移植**: GitHub から取得、k3s + Ollama + private 設定
-3. **Pi に本番 Web** を載せる
+3. **Pi に本番 Web** を載せる（`services/web` を静的ビルド → SSH デプロイ）
 4. Valorant pipeline → TFT 等
 
 ## エージェント作業ルール
@@ -81,7 +85,9 @@
 
 ## やってはいけないこと
 
-- 公開リポへ実 IP / 平文パスワード / 個人の経験生データを入れる
+- 公開リポへ実 IP / 平文パスワード / 個人の経験生データ・実プレイ動画を入れる
 - Ollama・Postgres を WAN に晒す
 - Web を再び Windows 常時配信に戻して Pi の役割を空にする
 - クラウド LLM へ個人ログ送信
+- 長尺動画を Pi 経由 multipart でアップロードする
+- 動画バイナリを Git にコミットする

@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: video-ingest-api
+  namespace: video-analysis
+  labels:
+    app: video-ingest-api
+    app.kubernetes.io/part-of: homellm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: video-ingest-api
+  template:
+    metadata:
+      labels:
+        app: video-ingest-api
+    spec:
+      serviceAccountName: video-ingest
+      containers:
+        - name: api
+          image: homellm/video-ingest-api:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8090
+          env:
+            - name: MEDIA_ROOT
+              value: /media
+            - name: NAMESPACE
+              value: video-analysis
+            - name: SEGMENTER_IMAGE
+              value: homellm/valorant-segmenter:dev
+            - name: STUB_SEGMENT_SECONDS
+              value: "2"
+          volumeMounts:
+            - name: media
+              mountPath: /media
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8090
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "500m"
+              memory: 512Mi
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: video-media-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: video-ingest-api
+  namespace: video-analysis
+  labels:
+    app: video-ingest-api
+spec:
+  selector:
+    app: video-ingest-api
+  ports:
+    - name: http
+      port: 8090
+      targetPort: 8090

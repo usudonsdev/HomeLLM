@@ -29,8 +29,28 @@
 2. そのカット点で動画を区切り、**ラウンドごとのプレイ動画**に分割する。
 3. ラウンド単位クリップごとに AI Job を起動する。
 
-#### Teamfight Tactics (TFT) pipeline（後続）
-1. **時間基準**でセグメントに分割する。
+#### 取り込み契約（ADR-008）
+
+```
+media/
+  inbox/                 # ユーザーがファイルを置く場所（API は触らない受信）
+  work/<jobId>/source.*  # 登録後に移動した原本
+  rounds/<jobId>/        # ラウンド分割結果
+  state/<jobId>.json     # 状態（queued|segmenting|ready|failed）
+  done/ | failed/        # 事後整理用（任意）
+```
+
+| API | 内容 |
+|-----|------|
+| `POST /v1/jobs` | `{ "game": "valorant", "filename": "match.mp4" }` → job id。inbox にファイルが必須 |
+| `GET /v1/jobs/{id}` | 状態・成果物パス |
+| `GET /v1/jobs` | 一覧 |
+
+- バイナリは HTTP で送らない。Pi はプロキシしない。
+- 登録後、ingest API が `work/<jobId>/` へ move し、Valorant segmenter `Job` を起動する。
+- 第1実装のカット点はスタブ可。後で OpenCV ロゴ検出に置換する。
+
+#### Teamfight Tactics (TFT) pipeline（後続）1. **時間基準**でセグメントに分割する。
 2. セグメント単位で分析 Job を起動する。
 
 #### 実装フェーズ

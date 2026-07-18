@@ -49,11 +49,13 @@ data/
 postgres-data/
 
 # Media (keep out of git by default)
+media/
 *.mp4
 *.mkv
 *.avi
 *.mov
 *.webm
+!scripts/fixtures/.gitkeep
 
 # Kubernetes local overrides
 **/secrets.yaml

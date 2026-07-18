@@ -1,4 +1,5 @@
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
@@ -10,6 +11,14 @@ from app.rag import build_prompt, find_experiences
 from app.schemas import ExperienceCreate, ExperienceRead, RagRequest, RagResponse
 
 app = FastAPI(title="HomeLLM job-hunting API (smoke)", version="0.1.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def to_read(exp: Experience) -> ExperienceRead:
