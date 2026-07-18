@@ -4,8 +4,8 @@ metadata:
   name: api-config
   namespace: job-hunting
 data:
-  # Fill via local overlay or edit after clone. Do not commit real Tailscale IPs.
-  OLLAMA_BASE_URL: "http://<WINDOWS_TAILSCALE_IP_OR_HOST_GATEWAY>:11434"
+  # In-cluster ExternalName Service (see ollama-externalname.yaml)
+  OLLAMA_BASE_URL: "http://ollama.job-hunting.svc.cluster.local:11434"
   OLLAMA_MODEL: "qwen3.5:9b"
 ---
 apiVersion: apps/v1
@@ -13,6 +13,9 @@ kind: Deployment
 metadata:
   name: job-hunting-api
   namespace: job-hunting
+  labels:
+    app: job-hunting-api
+    app.kubernetes.io/part-of: homellm
 spec:
   replicas: 1
   selector:
@@ -51,6 +54,12 @@ spec:
               port: 8000
             initialDelaySeconds: 5
             periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
           resources:
             requests:
               cpu: "100m"
@@ -64,9 +73,12 @@ kind: Service
 metadata:
   name: job-hunting-api
   namespace: job-hunting
+  labels:
+    app: job-hunting-api
 spec:
   selector:
     app: job-hunting-api
   ports:
-    - port: 8000
+    - name: http
+      port: 8000
       targetPort: 8000

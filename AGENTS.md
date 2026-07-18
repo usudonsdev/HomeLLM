@@ -38,8 +38,20 @@
 1. 完全ローカル AI（既定モデル `qwen3.5:9b`）
 2. Ollama は Windows ネイティブのみ（コンテナ化しない）
 3. RAG は最大 3〜5 件、`lessons_learned` + `emotional_log` のみ注入
-4. 本番オーケストレータは **Windows 上の k3s**（Swarm 不採用）。Compose は局所煙テストのみ可
+4. 本番オーケストレータは **Windows 上の k3s**（デモはデスクトップの **k3d**）。Swarm 不採用。Compose は局所フォールバックのみ
 5. 動画はゲーム別 pipeline（Valorant ロゴ分割 → Job、TFT は時間セグメント）
+
+## 管理プレーン（機能より先に完了させる対象）
+
+| 手順 | スクリプト |
+|------|------------|
+| デモクラスタ作成 | `scripts/cluster-create-demo.ps1` / `scripts/demo-up.ps1` |
+| Namespace / Quota / LimitRange | `scripts/cluster-apply-base.ps1` |
+| Secret 生成（`.local/`） | `scripts/secrets-materialize-demo.ps1` |
+| job-hunting 適用 | `scripts/cluster-apply-job-hunting.ps1` |
+| 破棄 | `scripts/cluster-destroy-demo.ps1` |
+
+詳細は `k8s/README.md`。
 
 ## 目標アーキテクチャ
 

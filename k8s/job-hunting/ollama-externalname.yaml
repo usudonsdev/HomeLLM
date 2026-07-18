@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+  namespace: job-hunting
+  labels:
+    app.kubernetes.io/name: ollama
+    app.kubernetes.io/part-of: homellm
+spec:
+  # Demo/prod: point ExternalName at a host that reaches Windows-native Ollama.
+  # k3d demo default uses host.k3d.internal (Docker host gateway).
+  # Production: replace with your private host name via local overlay — never commit real IPs.
+  type: ExternalName
+  externalName: host.k3d.internal
+  ports:
+    - name: http
+      port: 11434
+      targetPort: 11434

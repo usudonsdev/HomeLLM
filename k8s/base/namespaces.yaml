@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: job-hunting
+  labels:
+    app.kubernetes.io/part-of: homellm
+    homellm.io/role: interactive
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: video-analysis
+  labels:
+    app.kubernetes.io/part-of: homellm
+    homellm.io/role: batch

@@ -6,6 +6,7 @@
 *.key
 credentials*.json
 docs/private/
+.local/
 **/secrets.yaml
 **/secret.yaml
 !**/*.example.yaml

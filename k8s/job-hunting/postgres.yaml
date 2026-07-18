@@ -14,6 +14,9 @@ kind: Deployment
 metadata:
   name: postgres
   namespace: job-hunting
+  labels:
+    app: postgres
+    app.kubernetes.io/part-of: homellm
 spec:
   replicas: 1
   selector:
@@ -35,6 +38,13 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
+            - name: init
+              mountPath: /docker-entrypoint-initdb.d
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "homellm"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
           resources:
             requests:
               cpu: "100m"
@@ -46,12 +56,17 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: postgres-pvc
+        - name: init
+          configMap:
+            name: postgres-init
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: postgres
   namespace: job-hunting
+  labels:
+    app: postgres
 spec:
   selector:
     app: postgres
