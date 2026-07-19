@@ -25,10 +25,10 @@ Write-Host "== GET /experiences =="
 curl.exe -s "$BaseUrl/experiences"
 Write-Host ""
 
-Write-Host "== POST /rag/ask =="
-curl.exe -s -X POST "$BaseUrl/rag/ask" `
-  -H "Content-Type: application/json" `
-  --data-binary "@$scriptDir\smoke_payload_rag.json"
+Write-Host "== POST /rag/ask (may take 1-5 min on first load) =="
+curl.exe -s --max-time 360 -X POST "$BaseUrl/rag/ask" `
+    -H "Content-Type: application/json" `
+    --data-binary "@$scriptDir\smoke_payload_rag.json"
 Write-Host ""
 
 Write-Host "Smoke test finished."

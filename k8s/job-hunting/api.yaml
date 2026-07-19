@@ -7,6 +7,8 @@ data:
   # In-cluster ExternalName Service (see ollama-externalname.yaml)
   OLLAMA_BASE_URL: "http://ollama.job-hunting.svc.cluster.local:11434"
   OLLAMA_MODEL: "qwen3.5:9b"
+  OLLAMA_TIMEOUT_SECONDS: "300"
+  OLLAMA_KEEP_ALIVE: "24h"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -48,6 +50,16 @@ spec:
                 configMapKeyRef:
                   name: api-config
                   key: OLLAMA_MODEL
+            - name: OLLAMA_TIMEOUT_SECONDS
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: OLLAMA_TIMEOUT_SECONDS
+            - name: OLLAMA_KEEP_ALIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: OLLAMA_KEEP_ALIVE
           readinessProbe:
             httpGet:
               path: /health

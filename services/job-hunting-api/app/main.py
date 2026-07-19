@@ -112,7 +112,8 @@ async def rag_ask(payload: RagRequest, db: Session = Depends(get_db)) -> RagResp
     try:
         answer = await ollama_client.generate(prompt)
     except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=502, detail=f"Ollama generate failed: {exc}") from exc
+        detail = str(exc).strip() or type(exc).__name__
+        raise HTTPException(status_code=502, detail=f"Ollama generate failed: {detail}") from exc
 
     return RagResponse(
         query=payload.query,
