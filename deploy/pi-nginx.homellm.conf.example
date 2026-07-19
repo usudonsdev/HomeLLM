@@ -8,7 +8,9 @@ server {
     root /var/www/homellm;
     index index.html;
 
+    # Next.js `output: "export"` + trailingSlash creates /videos/index.html etc.
+    # Prefer index.html before falling through as a bare directory (avoids 403).
     location / {
-        try_files $uri $uri/ $uri/index.html =404;
+        try_files $uri $uri/index.html $uri/ =404;
     }
 }
