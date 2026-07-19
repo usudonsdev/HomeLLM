@@ -7,11 +7,11 @@ metadata:
     app.kubernetes.io/name: ollama
     app.kubernetes.io/part-of: homellm
 spec:
-  # Demo/prod: point ExternalName at a host that reaches Windows-native Ollama.
-  # k3d demo default uses host.k3d.internal (Docker host gateway).
-  # Production: replace with your private host name via local overlay — never commit real IPs.
+  # Windows + Docker Desktop / k3d: host.docker.internal reaches the host Ollama (:11434).
+  # host.k3d.internal is documented by k3d but often does not resolve inside pods here.
+  # Bare-metal k3s later: replace via local overlay (never commit real LAN IPs).
   type: ExternalName
-  externalName: host.k3d.internal
+  externalName: host.docker.internal
   ports:
     - name: http
       port: 11434

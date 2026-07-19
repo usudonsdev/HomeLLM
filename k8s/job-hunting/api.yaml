@@ -4,8 +4,9 @@ metadata:
   name: api-config
   namespace: job-hunting
 data:
-  # In-cluster ExternalName Service (see ollama-externalname.yaml)
-  OLLAMA_BASE_URL: "http://ollama.job-hunting.svc.cluster.local:11434"
+  # Reach Windows-host Ollama from k3d/Docker Desktop (not an in-cluster Pod).
+  # Prefer host.docker.internal — host.k3d.internal often fails DNS inside pods on Docker Desktop.
+  OLLAMA_BASE_URL: "http://host.docker.internal:11434"
   OLLAMA_MODEL: "qwen3.5:9b"
   OLLAMA_TIMEOUT_SECONDS: "300"
   OLLAMA_KEEP_ALIVE: "24h"
