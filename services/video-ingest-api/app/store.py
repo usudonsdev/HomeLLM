@@ -74,12 +74,30 @@ def new_job_id() -> str:
     return str(uuid.uuid4())
 
 
-def list_ready_for_analysis() -> list[dict[str, Any]]:
+def list_ready_for_analysis(*, stale_queued_seconds: float = 120.0) -> list[dict[str, Any]]:
+    """Return ready jobs that still need an analyzer run.
+
+    Retries when analysis_status is missing/pending/failed, or when queued/running
+    is older than stale_queued_seconds (Job may have never started).
+    """
     ready_states: list[dict[str, Any]] = []
+    now = datetime.now(timezone.utc)
     for state in list_states():
         if state.get("status") != JobStatus.ready.value:
             continue
-        if state.get("analysis_status") in {"queued", "running", "completed"}:
+        analysis = state.get("analysis_status")
+        if analysis in {None, "", "pending", "failed"}:
+            ready_states.append(state)
             continue
-        ready_states.append(state)
+        if analysis in {"queued", "running"}:
+            updated = state.get("updated_at")
+            try:
+                ts = datetime.fromisoformat(str(updated).replace("Z", "+00:00"))
+                age = (now - ts).total_seconds()
+            except Exception:  # noqa: BLE001
+                age = stale_queued_seconds + 1
+            if age >= stale_queued_seconds:
+                ready_states.append(state)
+            continue
+        # completed → skip
     return ready_states

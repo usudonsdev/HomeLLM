@@ -98,8 +98,36 @@ def create_valorant_segment_job(job_id: str, source_path: str) -> str:
 
 def create_valorant_analyzer_job(job_id: str) -> str:
     """Create a k8s Job that analyzes segmented rounds and sinks them back into the API."""
+    import time
+
     batch = _batch_api()
     name = f"valorant-ana-{job_id[:8]}"
+    # Replace finished/stale Jobs so retries are possible (409 previously left analysis queued forever).
+    try:
+        existing = batch.read_namespaced_job(name, settings.namespace)
+        status = existing.status
+        active = int(getattr(status, "active", 0) or 0)
+        if active == 0:
+            batch.delete_namespaced_job(
+                name,
+                settings.namespace,
+                body=client.V1DeleteOptions(propagation_policy="Background"),
+            )
+            # Allow the name to free before recreate.
+            for _ in range(20):
+                try:
+                    batch.read_namespaced_job(name, settings.namespace)
+                    time.sleep(0.5)
+                except ApiException as exc:
+                    if exc.status == 404:
+                        break
+                    raise
+        else:
+            return name
+    except ApiException as exc:
+        if getattr(exc, "status", None) != 404:
+            raise
+
     body = client.V1Job(
         api_version="batch/v1",
         kind="Job",

@@ -208,7 +208,7 @@ def _match_to_detail(row: VideoMatch) -> VideoMatchDetailRead:
 
 async def _analysis_poller() -> None:
     while True:
-        for item in store.list_ready_for_analysis():
+        for item in store.list_ready_for_analysis(stale_queued_seconds=settings.analyzer_stale_seconds):
             try:
                 analyzer_name = k8s_jobs.create_valorant_analyzer_job(item["id"])
                 store.write_state(
@@ -267,6 +267,46 @@ def get_job(job_id: str) -> JobResponse:
     data = store.read_state(job_id)
     if data is None:
         raise HTTPException(status_code=404, detail="job not found")
+    return _to_response(data)
+
+
+@app.post("/v1/jobs/{job_id}/reanalyze", response_model=JobResponse)
+def reanalyze_job(job_id: str) -> JobResponse:
+    """Force a new analyzer Job for a ready ingest job (recovery from stuck queued)."""
+    data = store.read_state(job_id)
+    if data is None:
+        raise HTTPException(status_code=404, detail="job not found")
+    if data.get("status") != JobStatus.ready.value:
+        raise HTTPException(status_code=409, detail="job must be ready before reanalyze")
+    data = store.write_state(
+        job_id,
+        {
+            **data,
+            "analysis_status": "pending",
+            "match_id": None,
+            "error": None,
+        },
+    )
+    try:
+        analyzer_name = k8s_jobs.create_valorant_analyzer_job(job_id)
+        data = store.write_state(
+            job_id,
+            {
+                **data,
+                "analysis_status": "queued",
+                "analyzer_job": analyzer_name,
+            },
+        )
+    except Exception as exc:  # noqa: BLE001
+        data = store.write_state(
+            job_id,
+            {
+                **data,
+                "analysis_status": "failed",
+                "error": f"failed to create analyzer Job: {exc}",
+            },
+        )
+        raise HTTPException(status_code=502, detail=data["error"]) from exc
     return _to_response(data)
 
 

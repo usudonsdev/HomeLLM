@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     logo_match_threshold: float = 0.72
     min_round_gap_seconds: float = 12.0
     analyzer_poll_seconds: float = 5.0
+    analyzer_stale_seconds: float = 120.0
     ollama_base_url: str = "http://host.docker.internal:11434"
     ollama_model: str = "qwen3.5:9b"
     ollama_timeout_seconds: float = 300.0
