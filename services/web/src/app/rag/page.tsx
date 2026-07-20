@@ -23,7 +23,7 @@ export default function RagPage() {
       const res = await askRag(query, keywords.length ? keywords : [query]);
       setAnswer(res.answer);
       setMeta(
-        `matched=${res.matched_count} · ollama=${res.ollama_reachable ? "up" : "down"} · model=${res.model} · contexts=${res.context_titles.join(" | ") || "(none)"}`,
+        `ヒット ${res.matched_count} 件 · Ollama ${res.ollama_reachable ? "接続OK" : "不通"} · モデル ${res.model} · 文脈: ${res.context_titles.join(" / ") || "なし"}`,
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -34,19 +34,25 @@ export default function RagPage() {
 
   return (
     <>
-      <h1>RAG drawer</h1>
+      <h1>引き出し（RAG）</h1>
       <p className="lead">
-        Filters a few experience logs, then asks the host Ollama model. Cloud LLM APIs are not used.
+        経験ログを数件だけ拾って、ホスト上の Ollama に聞きます。クラウド LLM
+        には送りません。初回は数分かかることがあります。
       </p>
       {error && <p className="bad">{error}</p>}
       <section className="panel">
         <form onSubmit={onSubmit}>
-          <label htmlFor="query">Prompt</label>
-          <textarea id="query" name="query" required placeholder="トラブルシューティングの経験を面接向けにまとめて" />
-          <label htmlFor="keywords">Keywords / tags</label>
+          <label htmlFor="query">聞きたいこと</label>
+          <textarea
+            id="query"
+            name="query"
+            required
+            placeholder="トラブルシューティングの経験を面接向けにまとめて"
+          />
+          <label htmlFor="keywords">キーワード / タグ</label>
           <input id="keywords" name="keywords" placeholder="トラブルシューティング" />
           <button type="submit" disabled={busy}>
-            {busy ? "Asking…" : "Ask"}
+            {busy ? "考えています…" : "聞く"}
           </button>
         </form>
       </section>

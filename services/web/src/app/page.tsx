@@ -11,13 +11,13 @@ import {
 type Probe = { ok: boolean; detail: string };
 
 export default function StatusPage() {
-  const [jobApi, setJobApi] = useState<Probe>({ ok: false, detail: "checking…" });
-  const [videoApi, setVideoApi] = useState<Probe>({ ok: false, detail: "checking…" });
+  const [jobApi, setJobApi] = useState<Probe>({ ok: false, detail: "確認中…" });
+  const [videoApi, setVideoApi] = useState<Probe>({ ok: false, detail: "確認中…" });
 
   async function refresh() {
     try {
       const h = await fetchJobHuntingHealth();
-      setJobApi({ ok: true, detail: `${h.service} / model ${h.ollama_model}` });
+      setJobApi({ ok: true, detail: `${h.service} / モデル ${h.ollama_model}` });
     } catch (e) {
       setJobApi({ ok: false, detail: e instanceof Error ? e.message : String(e) });
     }
@@ -25,7 +25,7 @@ export default function StatusPage() {
       const h = await fetchVideoHealth();
       setVideoApi({
         ok: true,
-        detail: `${h.service} / inbox=${h.inbox_exists ? "ready" : "missing"}`,
+        detail: `${h.service} / inbox=${h.inbox_exists ? "あり" : "なし"}`,
       });
     } catch (e) {
       setVideoApi({ ok: false, detail: e instanceof Error ? e.message : String(e) });
@@ -38,27 +38,31 @@ export default function StatusPage() {
 
   return (
     <>
-      <h1>Status</h1>
+      <h1>接続状態</h1>
       <p className="lead">
-        Production UI on the Pi. This page probes Windows APIs over Tailscale (or local
-        port-forward for desktop demos).
+        Pi 上の画面から、Windows（Tailscale またはデモ用 port-forward）の API
+        へ到達できるかを確認します。
       </p>
       <div className="grid two">
         <section className="panel">
-          <h2>job-hunting API</h2>
+          <h2>就活 API</h2>
           <p className="mono muted">{jobHuntingApiBase()}</p>
-          <p className={jobApi.ok ? "ok" : "bad"}>{jobApi.ok ? "UP" : "DOWN"}</p>
+          <p className={`status-mark ${jobApi.ok ? "ok" : "bad"}`}>
+            {jobApi.ok ? "稼働中" : "停止中"}
+          </p>
           <p className="muted">{jobApi.detail}</p>
         </section>
         <section className="panel">
-          <h2>video-ingest API</h2>
+          <h2>動画取り込み API</h2>
           <p className="mono muted">{videoIngestApiBase()}</p>
-          <p className={videoApi.ok ? "ok" : "bad"}>{videoApi.ok ? "UP" : "DOWN"}</p>
+          <p className={`status-mark ${videoApi.ok ? "ok" : "bad"}`}>
+            {videoApi.ok ? "稼働中" : "停止中"}
+          </p>
           <p className="muted">{videoApi.detail}</p>
         </section>
       </div>
       <button type="button" className="secondary" onClick={() => void refresh()}>
-        Refresh
+        再確認
       </button>
     </>
   );

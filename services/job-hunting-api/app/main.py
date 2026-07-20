@@ -1,6 +1,8 @@
-from fastapi import Depends, FastAPI, HTTPException
+from uuid import UUID
+
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import select, text
+from sqlalchemy import delete, select, text
 from sqlalchemy.orm import Session
 
 from app import ollama_client
@@ -87,6 +89,26 @@ def create_experience(payload: ExperienceCreate, db: Session = Depends(get_db)) 
     db.commit()
     db.refresh(exp)
     return to_read(exp)
+
+
+@app.delete("/experiences/{experience_id}", status_code=204)
+def delete_experience(experience_id: UUID, db: Session = Depends(get_db)) -> None:
+    exp = db.get(Experience, experience_id)
+    if exp is None:
+        raise HTTPException(status_code=404, detail="experience not found")
+    db.delete(exp)
+    db.commit()
+
+
+@app.delete("/experiences", status_code=200)
+def delete_experiences_by_title(
+    title: str = Query(..., min_length=1, description="Exact title match"),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Bulk-delete rows with an exact title (e.g. smoke test fixtures)."""
+    result = db.execute(delete(Experience).where(Experience.title == title))
+    db.commit()
+    return {"deleted": int(result.rowcount or 0), "title": title}
 
 
 @app.post("/rag/ask", response_model=RagResponse)

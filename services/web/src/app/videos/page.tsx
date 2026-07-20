@@ -39,40 +39,43 @@ export default function VideosPage() {
 
   return (
     <>
-      <h1>Valorant ingest</h1>
+      <h1>Valorant 取り込み</h1>
       <p className="lead">
-        Do not upload multi-GB files through this UI. Copy the video into the Windows{" "}
-        <span className="mono">media/inbox/</span> folder first, then register the basename here.
+        大きな動画はここからアップロードしません。Windows の{" "}
+        <span className="mono">media/inbox/</span>{" "}
+        にファイルを置いてから、ファイル名だけ登録してください。
       </p>
       {error && <p className="bad">{error}</p>}
       <section className="panel">
         <form onSubmit={onSubmit}>
-          <label htmlFor="filename">Filename in inbox</label>
+          <label htmlFor="filename">inbox 内のファイル名</label>
           <input id="filename" name="filename" required placeholder="match_001.mp4" />
           <button type="submit" disabled={busy}>
-            {busy ? "Registering…" : "Register Valorant job"}
+            {busy ? "登録中…" : "ジョブを登録"}
           </button>
         </form>
       </section>
       <section className="panel">
-        <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem" }}>
-          <h2>Jobs</h2>
+        <div className="toolbar">
+          <h2 style={{ margin: 0, flex: 1 }}>ジョブ一覧</h2>
           <button type="button" className="secondary" onClick={() => void load()}>
-            Refresh
+            再読み込み
           </button>
         </div>
         <ul className="list">
           {jobs.map((job) => (
             <li key={job.id}>
-              <strong>{job.filename}</strong>
-              <div className="muted mono">
-                {job.status}
-                {job.round_count != null ? ` · rounds=${job.round_count}` : ""}
-                {job.error ? ` · ${job.error}` : ""}
+              <div className="list-body">
+                <strong>{job.filename}</strong>
+                <div className="muted mono">
+                  {job.status}
+                  {job.round_count != null ? ` · ラウンド ${job.round_count}` : ""}
+                  {job.error ? ` · ${job.error}` : ""}
+                </div>
               </div>
             </li>
           ))}
-          {jobs.length === 0 && <li className="muted">No video jobs yet.</li>}
+          {jobs.length === 0 && <li className="muted">ジョブはまだありません。</li>}
         </ul>
       </section>
     </>

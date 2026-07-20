@@ -63,6 +63,21 @@ export async function createExperience(body: Record<string, unknown>) {
   );
 }
 
+export async function deleteExperience(id: string) {
+  const res = await fetch(`${jobHuntingApiBase()}/experiences/${id}`, { method: "DELETE" });
+  if (!res.ok && res.status !== 204) {
+    const text = await res.text();
+    throw new Error(text || `${res.status} ${res.statusText}`);
+  }
+}
+
+export async function deleteExperiencesByTitle(title: string) {
+  const q = new URLSearchParams({ title });
+  return parseJson<{ deleted: number; title: string }>(
+    await fetch(`${jobHuntingApiBase()}/experiences?${q}`, { method: "DELETE" }),
+  );
+}
+
 export async function askRag(query: string, keywords: string[]) {
   return parseJson<{
     query: string;

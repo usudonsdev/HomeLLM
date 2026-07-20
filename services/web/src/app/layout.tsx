@@ -1,20 +1,28 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Syne, Manrope } from "next/font/google";
+import { Zen_Kaku_Gothic_New, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 
-const display = Syne({ subsets: ["latin"], variable: "--font-display" });
-const body = Manrope({ subsets: ["latin"], variable: "--font-body" });
+const display = Zen_Kaku_Gothic_New({
+  weight: ["500", "700"],
+  subsets: ["latin"],
+  variable: "--font-display",
+});
+const body = Noto_Sans_JP({
+  weight: ["400", "500", "700"],
+  subsets: ["latin"],
+  variable: "--font-body",
+});
 
 export const metadata = {
   title: "HomeLLM",
-  description: "Local job-hunting drawer and Valorant video pipeline console",
+  description: "完全ローカルの就活引き出しと動画解析コンソール",
 };
 
 const nav = [
-  { href: "/", label: "Status" },
-  { href: "/experiences/", label: "Experiences" },
-  { href: "/rag/", label: "RAG" },
+  { href: "/", label: "状態" },
+  { href: "/experiences/", label: "経験ログ" },
+  { href: "/rag/", label: "引き出し" },
   { href: "/videos/", label: "Valorant" },
 ];
 
@@ -37,7 +45,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </header>
           <main className="main">{children}</main>
           <footer className="foot">
-            Pi hosts UI only. APIs and media stay on the Windows compute node.
+            Web は Raspberry Pi。API・DB・Ollama・動画処理は Windows 側で動かします。
           </footer>
         </div>
       </body>
