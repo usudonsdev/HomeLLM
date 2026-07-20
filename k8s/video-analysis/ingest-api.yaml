@@ -11,6 +11,8 @@ data:
   ANALYZER_IMAGE: "homellm/valorant-analyzer:dev"
   INTERNAL_API_BASE_URL: "http://video-ingest-api:8090"
   ANALYZER_POLL_SECONDS: "5"
+  UPLOAD_MAX_BYTES: "34359738368"
+  HOST_INBOX_HINT: "Documents\\HomeLLM\\videos\\inbox"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -66,6 +68,16 @@ spec:
                   key: ANALYZER_POLL_SECONDS
             - name: STUB_SEGMENT_SECONDS
               value: "2"
+            - name: UPLOAD_MAX_BYTES
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: UPLOAD_MAX_BYTES
+            - name: HOST_INBOX_HINT
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: HOST_INBOX_HINT
             - name: OLLAMA_BASE_URL
               valueFrom:
                 configMapKeyRef:

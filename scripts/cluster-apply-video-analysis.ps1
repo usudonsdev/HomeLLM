@@ -22,8 +22,23 @@ k3d image import homellm/video-ingest-api:dev homellm/valorant-analyzer:dev home
 Write-Host "Ensuring base namespaces/quotas ..."
 & "$PSScriptRoot\cluster-apply-base.ps1"
 
+Write-Host "Ensuring host video folder (Documents\HomeLLM\videos) ..."
+& "$PSScriptRoot\ensure-video-media-host.ps1" | Out-Null
+
 Write-Host "Applying video-analysis manifests ..."
-kubectl apply -f "$root\k8s\video-analysis\media-pvc.yaml"
+# Switch from legacy local-path PVC to hostPath PV if needed.
+$oldPvc = kubectl -n video-analysis get pvc video-media-pvc -o json 2>$null
+if ($LASTEXITCODE -eq 0 -and $oldPvc) {
+    $sc = kubectl -n video-analysis get pvc video-media-pvc -o jsonpath='{.spec.storageClassName}' 2>$null
+    if ($sc -ne "homellm-video-hostpath") {
+        Write-Host "Replacing legacy media PVC (storageClass=$sc) with hostPath Documents\HomeLLM\videos ..."
+        kubectl -n video-analysis scale deployment/video-ingest-api --replicas=0
+        kubectl -n video-analysis delete job --all --ignore-not-found
+        kubectl -n video-analysis delete pvc video-media-pvc --wait=true
+        kubectl -n video-analysis scale deployment/video-ingest-api --replicas=1
+    }
+}
+kubectl apply -f "$root\k8s\video-analysis\media-pv.yaml"
 kubectl apply -f "$local\video-postgres-secret.yaml"
 kubectl apply -f "$local\video-api-db-secret.yaml"
 kubectl create configmap postgres-init `

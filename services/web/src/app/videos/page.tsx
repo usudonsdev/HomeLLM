@@ -1,17 +1,29 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { DragEvent, FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   createVideoJob,
+  fetchVideoHealth,
   getVideoMatch,
   listVideoJobs,
   listVideoMatches,
   patchVideoRound,
+  uploadVideoJob,
   type VideoJob,
   type VideoMatchDetail,
   type VideoMatchSummary,
 } from "@/lib/api";
+
+const DEFAULT_INBOX = String.raw`Documents\HomeLLM\videos\inbox`;
+const DEFAULT_MAX = 32 * 1024 * 1024 * 1024;
+
+function formatBytes(n: number) {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  if (n < 1024 * 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(n / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+}
 
 export default function VideosPage() {
   const [jobs, setJobs] = useState<VideoJob[]>([]);
@@ -20,15 +32,20 @@ export default function VideosPage() {
   const [selectedMatch, setSelectedMatch] = useState<VideoMatchDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [inboxHint, setInboxHint] = useState(DEFAULT_INBOX);
+  const [uploadMax, setUploadMax] = useState(DEFAULT_MAX);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function load() {
     try {
       const [jobRows, matchRows] = await Promise.all([listVideoJobs(), listVideoMatches()]);
       setJobs(jobRows);
       setMatches(matchRows);
-      const nextId = selectedMatchId && matchRows.some((item) => item.id === selectedMatchId)
-        ? selectedMatchId
-        : matchRows[0]?.id ?? null;
+      const nextId =
+        selectedMatchId && matchRows.some((item) => item.id === selectedMatchId)
+          ? selectedMatchId
+          : (matchRows[0]?.id ?? null);
       setSelectedMatchId(nextId);
       setError(null);
     } catch (e) {
@@ -38,6 +55,15 @@ export default function VideosPage() {
 
   useEffect(() => {
     void load();
+    void (async () => {
+      try {
+        const health = await fetchVideoHealth();
+        if (health.host_inbox_hint) setInboxHint(health.host_inbox_hint);
+        if (health.upload_max_bytes) setUploadMax(health.upload_max_bytes);
+      } catch {
+        /* health is optional for page render */
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -70,6 +96,34 @@ export default function VideosPage() {
     }
   }
 
+  async function handleFile(file: File | null) {
+    if (!file) return;
+    if (file.size > uploadMax) {
+      setError(
+        `「${file.name}」は ${formatBytes(file.size)} で上限 ${formatBytes(uploadMax)} を超えています。` +
+          ` 上限を上げるか、解析ノードの ${inboxHint} に置いてファイル名登録してください。`,
+      );
+      return;
+    }
+    setBusy(true);
+    try {
+      await uploadVideoJob(file);
+      setError(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function onDrop(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0] ?? null;
+    void handleFile(file);
+  }
+
   async function onToggleHighlight(roundId: string, nextHighlight: boolean) {
     setBusy(true);
     try {
@@ -97,9 +151,8 @@ export default function VideosPage() {
     <>
       <h1>Valorant 取り込み</h1>
       <p className="lead">
-        大きな動画はここからアップロードしません。Windows の{" "}
-        <span className="mono">media/inbox/</span>{" "}
-        にファイルを置いてから、ファイル名だけ登録してください。
+        いま開いている PC から、下へドラッグ＆ドロップ（またはクリック選択）でアップロードできます。
+        ファイルはブラウザから解析用 Windows API へ直接送られます（上限 {formatBytes(uploadMax)}）。
       </p>
       {error && <p className="bad">{error}</p>}
       <section className="panel">
@@ -109,19 +162,60 @@ export default function VideosPage() {
             傾向と Tip
           </Link>
         </div>
-        <p className="muted">
-          `ready` の後に analyzer Job が走り、試合詳細とハイライトが保存されます。
-        </p>
+        <p className="muted">`ready` の後に analyzer Job が走り、試合詳細とハイライトが保存されます。</p>
       </section>
       <section className="panel">
+        <h2>この PC からアップロード</h2>
+        <div
+          className={`dropzone${dragOver ? " dropzone-active" : ""}`}
+          onDragEnter={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={onDrop}
+          onClick={() => fileInputRef.current?.click()}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click();
+          }}
+        >
+          <strong>{busy ? "アップロード中…" : "ここに mp4 などをドロップ"}</strong>
+          <span className="muted">このクライアント PC のファイルを選択 · 上限 {formatBytes(uploadMax)}</span>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".mp4,.mkv,.webm,.mov,video/*"
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0] ?? null;
+            e.target.value = "";
+            void handleFile(file);
+          }}
+        />
+      </section>
+      <details className="panel">
+        <summary style={{ cursor: "pointer", fontWeight: 600 }}>上級: 解析ノードに直接置いて登録</summary>
+        <p className="muted">
+          超巨大ファイル向けの補助手段です。通常は上のアップロードを使ってください。
+        </p>
         <form onSubmit={onSubmit}>
-          <label htmlFor="filename">inbox 内のファイル名</label>
+          <label htmlFor="filename">解析ノード inbox 内のファイル名</label>
           <input id="filename" name="filename" required placeholder="match_001.mp4" />
+          <p className="muted" style={{ marginTop: 0 }}>
+            置き場所（解析用 Windows）: <span className="mono">{inboxHint}</span>
+          </p>
           <button type="submit" disabled={busy}>
             {busy ? "登録中…" : "ジョブを登録"}
           </button>
         </form>
-      </section>
+      </details>
       <section className="panel">
         <div className="toolbar">
           <h2 style={{ margin: 0, flex: 1 }}>ジョブ一覧</h2>

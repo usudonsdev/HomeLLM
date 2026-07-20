@@ -7,3 +7,4 @@ python-dotenv==1.1.0
 sqlalchemy==2.0.41
 psycopg[binary]==3.2.9
 httpx==0.28.1
+python-multipart==0.0.20

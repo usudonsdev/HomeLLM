@@ -22,15 +22,24 @@ docker run --rm -v "${seedDir}:/out" linuxserver/ffmpeg:version-7.1-cli `
 $pod = kubectl -n video-analysis get pod -l app=video-ingest-api -o jsonpath='{.items[0].metadata.name}'
 if (-not $pod) { throw "video-ingest-api pod not found" }
 
-Write-Host "Copying $Filename into pod inbox ($pod) ..."
-kubectl -n video-analysis exec $pod -- mkdir -p /media/inbox
-Push-Location $seedDir
-try {
-    # Avoid Windows drive-letter paths: kubectl treats "C:" as a remote pod spec.
-    kubectl -n video-analysis cp ".\$Filename" "${pod}:/media/inbox/$Filename"
-}
-finally {
-    Pop-Location
+$hostInbox = Join-Path $env:USERPROFILE "Documents\HomeLLM\videos\inbox"
+& "$PSScriptRoot\ensure-video-media-host.ps1" | Out-Null
+
+Write-Host "Copying $Filename into host inbox ($hostInbox) ..."
+Copy-Item -Force $seedFile (Join-Path $hostInbox $Filename)
+
+# Fallback for clusters that do not yet mount Documents\HomeLLM\videos
+$probe = kubectl -n video-analysis exec $pod -- sh -c "test -f /media/inbox/$Filename && echo ok || echo missing"
+if ($probe -notmatch "ok") {
+    Write-Host "Host mount not visible in pod; falling back to kubectl cp ..."
+    kubectl -n video-analysis exec $pod -- mkdir -p /media/inbox
+    Push-Location $seedDir
+    try {
+        kubectl -n video-analysis cp ".\$Filename" "${pod}:/media/inbox/$Filename"
+    }
+    finally {
+        Pop-Location
+    }
 }
 
 Write-Host "Starting port-forward on 8090 ..."

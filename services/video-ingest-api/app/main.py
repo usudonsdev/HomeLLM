@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import re
 import shutil
 from contextlib import suppress
 from pathlib import Path
 from uuid import UUID
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sqlalchemy import select, text
@@ -28,6 +29,8 @@ from app.schemas import (
 from app.store import JobStatus
 from app.tips import build_tip_prompt, select_tip_rounds
 
+ALLOWED_UPLOAD_SUFFIXES = {".mp4", ".mkv", ".webm", ".mov"}
+
 app = FastAPI(title="HomeLLM video-ingest API", version="0.1.0")
 poller_task: asyncio.Task[None] | None = None
 
@@ -42,7 +45,10 @@ app.add_middleware(
 
 class CreateJobRequest(BaseModel):
     game: str = Field(pattern="^(valorant)$")
-    filename: str = Field(min_length=1, description="Basename under media/inbox/")
+    filename: str = Field(
+        min_length=1,
+        description=r"Basename under Documents\HomeLLM\videos\inbox (or MEDIA_ROOT/inbox)",
+    )
 
 
 class JobResponse(BaseModel):
@@ -64,6 +70,11 @@ class JobResponse(BaseModel):
     updated_at: str | None = None
 
 
+class InboxFile(BaseModel):
+    filename: str
+    size_bytes: int
+
+
 def _to_response(data: dict) -> JobResponse:
     return JobResponse(
         id=data["id"],
@@ -83,6 +94,72 @@ def _to_response(data: dict) -> JobResponse:
         created_at=data.get("created_at"),
         updated_at=data.get("updated_at"),
     )
+
+
+def _safe_basename(name: str) -> str:
+    base = Path(name).name
+    if not base or base != name:
+        raise HTTPException(status_code=400, detail="filename must be a basename only")
+    if re.search(r"[^\w.\- ()\[\]]", base):
+        raise HTTPException(status_code=400, detail="filename has unsupported characters")
+    return base
+
+
+def _start_job_from_inbox(filename: str, game: str) -> dict:
+    store.ensure_layout()
+    source = store.inbox_dir() / filename
+    if not source.is_file():
+        raise HTTPException(status_code=404, detail=f"file not found in inbox: {filename}")
+
+    job_id = store.new_job_id()
+    work = store.work_dir(job_id)
+    work.mkdir(parents=True, exist_ok=True)
+    dest = work / f"source{source.suffix.lower() or '.mp4'}"
+    shutil.move(str(source), str(dest))
+
+    rounds = store.rounds_dir(job_id)
+    rounds.mkdir(parents=True, exist_ok=True)
+
+    created = store.utc_now()
+    state = store.write_state(
+        job_id,
+        {
+            "game": game,
+            "filename": filename,
+            "status": JobStatus.queued.value,
+            "source_path": str(dest),
+            "rounds_dir": str(rounds),
+            "created_at": created,
+            "k8s_job": None,
+            "analysis_status": "pending",
+            "analyzer_job": None,
+            "match_id": None,
+            "error": None,
+        },
+    )
+
+    try:
+        k8s_name = k8s_jobs.create_valorant_segment_job(job_id, str(dest))
+        state = store.write_state(
+            job_id,
+            {
+                **state,
+                "status": JobStatus.segmenting.value,
+                "k8s_job": k8s_name,
+            },
+        )
+    except Exception as exc:  # noqa: BLE001
+        state = store.write_state(
+            job_id,
+            {
+                **state,
+                "status": JobStatus.failed.value,
+                "error": f"failed to create k8s Job: {exc}",
+            },
+        )
+        raise HTTPException(status_code=502, detail=state["error"]) from exc
+
+    return state
 
 
 @app.on_event("startup")
@@ -164,8 +241,20 @@ def health(db: Session = Depends(get_db)) -> dict:
         "service": "video-ingest-api",
         "media_root": settings.media_root,
         "inbox_exists": store.inbox_dir().exists(),
+        "host_inbox_hint": settings.host_inbox_hint,
+        "upload_max_bytes": settings.upload_max_bytes,
         "ollama_model": settings.ollama_model,
     }
+
+
+@app.get("/v1/inbox", response_model=list[InboxFile])
+def list_inbox() -> list[InboxFile]:
+    store.ensure_layout()
+    files: list[InboxFile] = []
+    for path in sorted(store.inbox_dir().iterdir()):
+        if path.is_file() and path.suffix.lower() in ALLOWED_UPLOAD_SUFFIXES:
+            files.append(InboxFile(filename=path.name, size_bytes=path.stat().st_size))
+    return files
 
 
 @app.get("/v1/jobs", response_model=list[JobResponse])
@@ -183,67 +272,62 @@ def get_job(job_id: str) -> JobResponse:
 
 @app.post("/v1/jobs", response_model=JobResponse, status_code=201)
 def create_job(payload: CreateJobRequest) -> JobResponse:
-    store.ensure_layout()
-    filename = Path(payload.filename).name
-    if filename != payload.filename or "/" in payload.filename or "\\" in payload.filename:
-        raise HTTPException(status_code=400, detail="filename must be a basename only")
+    filename = _safe_basename(payload.filename)
+    return _to_response(_start_job_from_inbox(filename, payload.game))
 
-    source = store.inbox_dir() / filename
-    if not source.is_file():
+
+@app.post("/v1/jobs/upload", response_model=JobResponse, status_code=201)
+async def upload_and_create_job(
+    file: UploadFile = File(...),
+    game: str = Form("valorant"),
+) -> JobResponse:
+    """Demo / small-clip upload. Large VODs must be copied to the host inbox folder."""
+    if game != "valorant":
+        raise HTTPException(status_code=400, detail="only game=valorant is supported")
+
+    raw_name = file.filename or "upload.mp4"
+    filename = _safe_basename(raw_name)
+    suffix = Path(filename).suffix.lower()
+    if suffix not in ALLOWED_UPLOAD_SUFFIXES:
         raise HTTPException(
-            status_code=404,
-            detail=f"file not found in inbox: {filename}",
+            status_code=400,
+            detail=f"unsupported extension {suffix or '(none)'}; allowed: {sorted(ALLOWED_UPLOAD_SUFFIXES)}",
         )
 
-    job_id = store.new_job_id()
-    work = store.work_dir(job_id)
-    work.mkdir(parents=True, exist_ok=True)
-    dest = work / f"source{source.suffix.lower() or '.mp4'}"
-    shutil.move(str(source), str(dest))
+    store.ensure_layout()
+    dest = store.inbox_dir() / filename
+    if dest.exists():
+        raise HTTPException(status_code=409, detail=f"inbox already has {filename}")
 
-    rounds = store.rounds_dir(job_id)
-    rounds.mkdir(parents=True, exist_ok=True)
-
-    created = store.utc_now()
-    state = store.write_state(
-        job_id,
-        {
-            "game": payload.game,
-            "filename": filename,
-            "status": JobStatus.queued.value,
-            "source_path": str(dest),
-            "rounds_dir": str(rounds),
-            "created_at": created,
-            "k8s_job": None,
-            "analysis_status": "pending",
-            "analyzer_job": None,
-            "match_id": None,
-            "error": None,
-        },
-    )
-
+    written = 0
     try:
-        k8s_name = k8s_jobs.create_valorant_segment_job(job_id, str(dest))
-        state = store.write_state(
-            job_id,
-            {
-                **state,
-                "status": JobStatus.segmenting.value,
-                "k8s_job": k8s_name,
-            },
-        )
-    except Exception as exc:  # noqa: BLE001
-        state = store.write_state(
-            job_id,
-            {
-                **state,
-                "status": JobStatus.failed.value,
-                "error": f"failed to create k8s Job: {exc}",
-            },
-        )
-        raise HTTPException(status_code=502, detail=state["error"]) from exc
+        with dest.open("wb") as out:
+            while True:
+                chunk = await file.read(1024 * 1024)
+                if not chunk:
+                    break
+                written += len(chunk)
+                if written > settings.upload_max_bytes:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=(
+                            f"file exceeds upload_max_bytes={settings.upload_max_bytes}. "
+                            f"Copy large VODs to {settings.host_inbox_hint} instead."
+                        ),
+                    )
+                out.write(chunk)
+    except Exception:
+        if dest.exists():
+            dest.unlink(missing_ok=True)
+        raise
+    finally:
+        await file.close()
 
-    return _to_response(state)
+    if written == 0:
+        dest.unlink(missing_ok=True)
+        raise HTTPException(status_code=400, detail="empty upload")
+
+    return _to_response(_start_job_from_inbox(filename, game))
 
 
 @app.get("/v1/matches", response_model=list[VideoMatchSummaryRead])

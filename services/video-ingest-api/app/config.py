@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     ollama_timeout_seconds: float = 300.0
     ollama_keep_alive: str = "24h"
     tip_context_limit: int = 5
+    # Primary path: browser on any Tailscale client → this API (not via Pi proxy).
+    # 32 GiB covers typical ~1h 1080p game captures with headroom; override via UPLOAD_MAX_BYTES.
+    upload_max_bytes: int = 34_359_738_368  # 32 GiB
+    host_inbox_hint: str = r"Documents\HomeLLM\videos\inbox"
 
 
 settings = Settings()

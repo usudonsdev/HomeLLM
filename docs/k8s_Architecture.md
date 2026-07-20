@@ -34,7 +34,7 @@
 
 ```
 media/
-  inbox/                 # ユーザーがファイルを置く場所（API は触らない受信）
+  inbox/                 # Documents\HomeLLM\videos\inbox（ホストから見える）
   work/<jobId>/source.*  # 登録後に移動した原本
   rounds/<jobId>/        # ラウンド分割結果
   state/<jobId>.json     # 状態（queued|segmenting|ready|failed）

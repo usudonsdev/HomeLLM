@@ -89,9 +89,13 @@ export async function fetchJobHuntingHealth() {
 }
 
 export async function fetchVideoHealth() {
-  return parseJson<{ status: string; service: string; inbox_exists: boolean }>(
-    await fetch(`${videoIngestApiBase()}/health`),
-  );
+  return parseJson<{
+    status: string;
+    service: string;
+    inbox_exists: boolean;
+    host_inbox_hint?: string;
+    upload_max_bytes?: number;
+  }>(await fetch(`${videoIngestApiBase()}/health`));
 }
 
 export async function listExperiences() {
@@ -152,6 +156,13 @@ export async function createVideoJob(filename: string) {
       body: JSON.stringify({ game: "valorant", filename }),
     }),
   );
+}
+
+export async function uploadVideoJob(file: File) {
+  const body = new FormData();
+  body.append("game", "valorant");
+  body.append("file", file, file.name);
+  return parseJson<VideoJob>(await fetch(`${videoIngestApiBase()}/v1/jobs/upload`, { method: "POST", body }));
 }
 
 export async function listVideoMatches() {

@@ -1,7 +1,11 @@
 # video-analysis workloads
 #
-# Layout under PVC `video-media-pvc` mounted at /media:
+# Host path (Windows): Documents\HomeLLM\videos\
+# Mounted in-cluster as hostPath /homellm-media → PVC video-media-pvc → /media in pods
+#
+# Layout:
 #   inbox/ work/ rounds/ state/ done/ failed/
 #
 # Ingest: services/video-ingest-api
-# Valorant segmenter image: homellm/valorant-segmenter:dev
+# Segmenter: homellm/valorant-segmenter:dev
+# Analyzer:  homellm/valorant-analyzer:dev

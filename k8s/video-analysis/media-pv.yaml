@@ -1,0 +1,37 @@
+# HostPath volume backed by Documents\HomeLLM\videos on the Windows node.
+# Demo (k3d): cluster-create-demo.ps1 mounts that folder at /homellm-media inside the node.
+# Prod (k3s on notebook): ensure the same host path exists, or edit hostPath.path.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: video-media-pv
+  labels:
+    app.kubernetes.io/part-of: homellm
+    homellm.io/role: media
+spec:
+  capacity:
+    storage: 50Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: homellm-video-hostpath
+  hostPath:
+    path: /homellm-media
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: video-media-pvc
+  namespace: video-analysis
+  labels:
+    app.kubernetes.io/part-of: homellm
+    homellm.io/role: media
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: homellm-video-hostpath
+  resources:
+    requests:
+      storage: 50Gi
+  volumeName: video-media-pv

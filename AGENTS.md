@@ -41,7 +41,7 @@
 3. RAG は最大 3〜5 件、`lessons_learned` + `emotional_log` のみ注入
 4. 本番オーケストレータは **Windows 上の k3s**（デモはデスクトップの **k3d**）。Swarm 不採用。Compose は局所フォールバックのみ
 5. 動画はゲーム別 pipeline（Valorant ロゴ分割 → Job、TFT は時間セグメント）
-6. **大容量動画はホスト `media/inbox/` へ直接配置**。API はメタデータ登録のみ（ADR-008）。Pi / Git にバイナリを流さない
+6. **動画はクライアント PC から Windows API へ直接アップロード**（Pi はプロキシしない）。超巨大のみ解析ノード `Documents\HomeLLM\videos\inbox\` 手置き可（ADR-008）
 
 ## 管理プレーン（機能より先に完了させる対象）
 
