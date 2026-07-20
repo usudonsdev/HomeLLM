@@ -72,3 +72,14 @@ def list_states() -> list[dict[str, Any]]:
 
 def new_job_id() -> str:
     return str(uuid.uuid4())
+
+
+def list_ready_for_analysis() -> list[dict[str, Any]]:
+    ready_states: list[dict[str, Any]] = []
+    for state in list_states():
+        if state.get("status") != JobStatus.ready.value:
+            continue
+        if state.get("analysis_status") in {"queued", "running", "completed"}:
+            continue
+        ready_states.append(state)
+    return ready_states

@@ -9,7 +9,8 @@
 |------|------|
 | `docs/security.md` | **公開リポのセキュリティ方針（必読）** |
 | `docs/docs_system_spec.md` | 役割分担・全体構成 |
-| `docs/docs_db_spec.md` | PostgreSQL・RAG |
+| `docs/docs_db_spec.md` | PostgreSQL・RAG（就活ドメイン） |
+| `docs/video_db_spec.md` | PostgreSQL（動画解析ドメイン） |
 | `docs/Architecture_decision.md` | ADR（k3s、Ollama、Pi Web、秘密情報） |
 | `docs/k8s_Architecture.md` | Namespace・ゲーム別 pipeline |
 | `docs/infra_inventory.md` | ハード役割（実 IP なし） |

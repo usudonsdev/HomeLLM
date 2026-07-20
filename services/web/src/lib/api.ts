@@ -34,7 +34,52 @@ export type VideoJob = {
   status: string;
   round_count?: number | null;
   error?: string | null;
+  analysis_status?: string | null;
+  analyzer_job?: string | null;
+  match_id?: string | null;
   updated_at?: string | null;
+};
+
+export type VideoRound = {
+  id: string;
+  match_id: string;
+  round_index: number;
+  clip_path: string;
+  facts?: string | null;
+  lessons_learned?: string | null;
+  emotional_log?: string | null;
+  highlight: boolean;
+  highlight_reason?: string | null;
+  keyframe_paths: string[];
+};
+
+export type VideoMatchSummary = {
+  id: string;
+  ingest_job_id: string;
+  game: string;
+  source_filename: string;
+  title: string;
+  detail_analysis: string;
+  lessons_learned?: string | null;
+  emotional_log?: string | null;
+  status: string;
+  round_count: number;
+  highlight_count: number;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type VideoMatchDetail = VideoMatchSummary & {
+  rounds: VideoRound[];
+};
+
+export type VideoTipsResponse = {
+  round_ids: string[];
+  round_titles: string[];
+  matched_count: number;
+  answer: string;
+  model: string;
+  ollama_reachable: boolean;
 };
 
 export async function fetchJobHuntingHealth() {
@@ -105,6 +150,34 @@ export async function createVideoJob(filename: string) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ game: "valorant", filename }),
+    }),
+  );
+}
+
+export async function listVideoMatches() {
+  return parseJson<VideoMatchSummary[]>(await fetch(`${videoIngestApiBase()}/v1/matches`));
+}
+
+export async function getVideoMatch(id: string) {
+  return parseJson<VideoMatchDetail>(await fetch(`${videoIngestApiBase()}/v1/matches/${id}`));
+}
+
+export async function patchVideoRound(id: string, body: { highlight: boolean; highlight_reason?: string | null }) {
+  return parseJson<VideoRound>(
+    await fetch(`${videoIngestApiBase()}/v1/rounds/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  );
+}
+
+export async function fetchVideoTips(matchIds: string[] = [], limit = 5) {
+  return parseJson<VideoTipsResponse>(
+    await fetch(`${videoIngestApiBase()}/v1/tips`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ match_ids: matchIds, limit }),
     }),
   );
 }

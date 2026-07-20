@@ -1,3 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-config
+  namespace: video-analysis
+data:
+  OLLAMA_BASE_URL: "http://host.docker.internal:11434"
+  OLLAMA_MODEL: "qwen3.5:9b"
+  OLLAMA_TIMEOUT_SECONDS: "300"
+  OLLAMA_KEEP_ALIVE: "24h"
+  ANALYZER_IMAGE: "homellm/valorant-analyzer:dev"
+  INTERNAL_API_BASE_URL: "http://video-ingest-api:8090"
+  ANALYZER_POLL_SECONDS: "5"
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -24,14 +38,54 @@ spec:
           ports:
             - containerPort: 8090
           env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: api-db-secret
+                  key: DATABASE_URL
             - name: MEDIA_ROOT
               value: /media
             - name: NAMESPACE
               value: video-analysis
             - name: SEGMENTER_IMAGE
               value: homellm/valorant-segmenter:dev
+            - name: ANALYZER_IMAGE
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: ANALYZER_IMAGE
+            - name: INTERNAL_API_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: INTERNAL_API_BASE_URL
+            - name: ANALYZER_POLL_SECONDS
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: ANALYZER_POLL_SECONDS
             - name: STUB_SEGMENT_SECONDS
               value: "2"
+            - name: OLLAMA_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: OLLAMA_BASE_URL
+            - name: OLLAMA_MODEL
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: OLLAMA_MODEL
+            - name: OLLAMA_TIMEOUT_SECONDS
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: OLLAMA_TIMEOUT_SECONDS
+            - name: OLLAMA_KEEP_ALIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: OLLAMA_KEEP_ALIVE
           volumeMounts:
             - name: media
               mountPath: /media

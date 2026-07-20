@@ -22,12 +22,13 @@
 | ingest（共通） | 動画受付、保存、`game` 種別の解決 | 共通サービスとして残しやすい |
 | segmenter（ゲーム別） | カット点抽出とクリップ／セグメント分割 | `valorant-segmenter` / `tft-segmenter` 等 |
 | analyzer（単位 Job） | 分割後の各単位に対する画像処理・Ollama 推論 | 並列度を制限した Job |
-| sink（共通） | 結果テキスト／メタデータを `job-hunting` へ渡す | 内部 API またはイベント |
+| sink（共通） | 解析結果を **video-analysis 専用 DB** に蓄積（`video-ingest-api`） | 就活 DB へは自動連携しない |
 
 #### Valorant pipeline（Phase の最初の実装対象）
 1. ラウンド間にのみ出現するロゴを識別し、カット点を抽出する。
 2. そのカット点で動画を区切り、**ラウンドごとのプレイ動画**に分割する。
 3. ラウンド単位クリップごとに AI Job を起動する。
+4. 解析メモを sink し、ユーザーが **傾向の要約と上達 Tip** を受け取れるようにする（§2.1）。
 
 #### 取り込み契約（ADR-008）
 
@@ -55,7 +56,7 @@ media/
 
 #### 実装フェーズ
 - **Phase 1**: Windows の k3s に API + Postgres。Pi に最小 Web（またはプレースホルダ）。動画解析は未実装でも境界を前提に設計。
-- **Phase 2**: Valorant pipeline（ingest → ロゴ検出分割 → ラウンド単位 AI Job → sink）。
+- **Phase 2**: Valorant pipeline（ingest → ロゴ検出分割 → ラウンド単位 AI Job → **video-analysis DB へ蓄積** → 傾向 / Tip）。
 - **Phase 3**: TFT pipeline を同契約で追加。以降、タイトル追加は segmenter / 分析プロンプトの追加を基本とする。
 
 #### Job 分割の目安
@@ -64,10 +65,37 @@ media/
 - 前処理 Job と推論 Job を分離し、推論の同時実行数はホスト負荷を見て低く保つ（目安 1〜2）。
 
 ## 2. サービス間連携とAI（Ollama）アクセス
-- **非同期連携**: 動画解析が完了して抽出されたテキストデータ（「このシーンでの反省点」など）は、バックエンドの内部API（またはイベント）を経由して `job-hunting` のデータベースに蓄積され、「引き出し」の一部となる。
+- **`job-hunting` と `video-analysis` は独立サービス**。DB・API・デプロイ単位を共有しない。Web UI は Tailscale 経由で **両 API を別々に** 呼ぶ。
+- 動画解析の試合詳細・ハイライト・Tip は `video-analysis` 側（`docs/video_db_spec.md`）に完結する。
+- 就活引き出しへゲーム知見を載せる場合は、将来 **ユーザー明示のエクスポート** を別機能とする（自動 sink しない）。
 - **ローカルAI（Ollama）へのルーティング**:
   Windows 上の Pod は k3s の `ExternalName` またはホストゲートウェイ経由で、**同一 Windows ホスト**上の Ollama（`:11434`）へリクエストする。到達先ホスト名／IP の実体はローカル設定のみ（リポジトリには `<WINDOWS_OLLAMA_BASE_URL>` 等のプレースホルダ）。既定モデルは **`qwen3.5:9b`**。
-- **フロント → API**: Pi 上の Web から Tailscale 経由で Windows の `job-hunting-api` Service を呼ぶ。
+- **フロント → API**: Pi 上の Web から Tailscale 経由で `job-hunting-api`（就活）と `video-ingest-api`（動画）を **別 URL** で呼ぶ。
+
+## 2.1. 動画解析のプロダクト要件（Valorant 起点）
+
+ユーザーが受け取りたい成果は「クリップが切れた」こと自体ではなく、次の体験である。
+
+1. **試合（マッチ）単位の詳細分析**が残る（流れ・勝敗要因・全体の癖・次への課題。薄い一行要約では不足）
+2. その試合の中で **特に注目すべきラウンド（ハイライト）** を一覧し、個別に見返せる
+3. ラウンド単位の短いメモ（事実・反省・良かった点）も保存する（非ハイライトは UI で折りたたみ可）
+4. 複数マッチを横断して **自分の傾向** がまとまる
+5. その傾向に基づく **上達 Tip** を、ホスト Ollama から日本語で受け取れる
+
+制約（就活 RAG と同じ思想）:
+
+- クラウド LLM に動画・ログを送らない
+- Tip 生成時にプロンプトへ入れるのは **厳選した短いテキストのみ**（試合詳細の全文ダンプや生 VOD は入れない）
+- Tip は「一般論だけ」ではなく、蓄積した自分の解析メモを根拠にする
+
+データフロー（要件）:
+
+```text
+inbox → segmenter → analyzer → video-ingest-api（matches/rounds DB）
+                             → Web: 試合詳細 / ハイライト / Tip
+```
+
+蓄積先: `video-analysis` Namespace の Postgres（`docs/video_db_spec.md`）。
 
 ## 3. リソース制御戦略
 ```yaml

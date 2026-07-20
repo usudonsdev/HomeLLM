@@ -49,3 +49,5 @@ CREATE TABLE experience_tags (
 1. フロントエンドから「チーム開発における葛藤について面接用にまとめたい」などのリクエストを受ける。
 2. バックエンドは `tags.name` から「チーム開発」を、または `emotional_log` に対する全文検索でキーワードがヒットする `experiences` レコードを抽出。
 3. 抽出された最大3〜5件の `lessons_learned` と `emotional_log` の生テキストのみを抽出し、Ollama のプロンプトへコンテキストとして注入する。これにより、クラウドLLMで発生しがちな「情報過多によるコンテキスト無視」を回避し、ローカルLLMでも極めて正確な自己分析の言語化が可能となる。
+
+動画解析（Valorant 等）のスキーマは **`docs/video_db_spec.md`**（`video-analysis` 専用 Postgres）。本書の `experiences` とは分離する。
