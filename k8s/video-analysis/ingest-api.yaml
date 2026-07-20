@@ -13,6 +13,11 @@ data:
   ANALYZER_POLL_SECONDS: "5"
   UPLOAD_MAX_BYTES: "34359738368"
   HOST_INBOX_HINT: "Documents\\HomeLLM\\videos\\inbox"
+  LOGO_TEMPLATE_DIR: "/media/templates/valorant"
+  SAMPLE_EVERY_SECONDS: "0.5"
+  LOGO_MATCH_THRESHOLD: "0.72"
+  MIN_ROUND_GAP_SECONDS: "12"
+  SEGMENT_FALLBACK_SECONDS: "90"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -66,8 +71,31 @@ spec:
                 configMapKeyRef:
                   name: api-config
                   key: ANALYZER_POLL_SECONDS
-            - name: STUB_SEGMENT_SECONDS
-              value: "2"
+            - name: SEGMENT_FALLBACK_SECONDS
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: SEGMENT_FALLBACK_SECONDS
+            - name: LOGO_TEMPLATE_DIR
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: LOGO_TEMPLATE_DIR
+            - name: SAMPLE_EVERY_SECONDS
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: SAMPLE_EVERY_SECONDS
+            - name: LOGO_MATCH_THRESHOLD
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: LOGO_MATCH_THRESHOLD
+            - name: MIN_ROUND_GAP_SECONDS
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: MIN_ROUND_GAP_SECONDS
             - name: UPLOAD_MAX_BYTES
               valueFrom:
                 configMapKeyRef:

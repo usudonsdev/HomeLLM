@@ -55,6 +55,7 @@ media/
 *.avi
 *.mov
 *.webm
+*.dem
 !scripts/fixtures/.gitkeep
 
 # Kubernetes local overrides

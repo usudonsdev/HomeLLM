@@ -15,7 +15,7 @@ spec:
             - sh
             - -c
             - |
-              mkdir -p /media/inbox /media/work /media/rounds /media/state /media/done /media/failed
+              mkdir -p /media/inbox /media/work /media/rounds /media/state /media/done /media/failed /media/templates/valorant
               chmod -R 777 /media
           volumeMounts:
             - name: media

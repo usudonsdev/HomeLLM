@@ -10,7 +10,13 @@ class Settings(BaseSettings):
     segmenter_image: str = "homellm/valorant-segmenter:dev"
     analyzer_image: str = "homellm/valorant-analyzer:dev"
     internal_api_base_url: str = "http://video-ingest-api:8090"
-    stub_segment_seconds: float = 2.0
+    # Fallback only when logo/transition detection finds no cuts.
+    segment_fallback_seconds: float = 90.0
+    stub_segment_seconds: float = 90.0  # alias kept for older env
+    logo_template_dir: str = "/media/templates/valorant"
+    sample_every_seconds: float = 0.5
+    logo_match_threshold: float = 0.72
+    min_round_gap_seconds: float = 12.0
     analyzer_poll_seconds: float = 5.0
     ollama_base_url: str = "http://host.docker.internal:11434"
     ollama_model: str = "qwen3.5:9b"

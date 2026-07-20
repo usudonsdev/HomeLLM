@@ -25,10 +25,19 @@
 | sink（共通） | 解析結果を **video-analysis 専用 DB** に蓄積（`video-ingest-api`） | 就活 DB へは自動連携しない |
 
 #### Valorant pipeline（Phase の最初の実装対象）
-1. ラウンド間にのみ出現するロゴを識別し、カット点を抽出する。
+1. ラウンド間ロゴ（テンプレート）または遷移スパイクを検出し、カット点を抽出する。
 2. そのカット点で動画を区切り、**ラウンドごとのプレイ動画**に分割する。
-3. ラウンド単位クリップごとに AI Job を起動する。
+3. ラウンド単位クリップごとに analyzer Job を起動し、ホスト Ollama でメモを生成する。
 4. 解析メモを sink し、ユーザーが **傾向の要約と上達 Tip** を受け取れるようにする（§2.1）。
+
+カット検出の優先順位:
+1. `Documents\HomeLLM\videos\templates\valorant\` の PNG/JPG テンプレート照合（OpenCV）
+2. 明るいフラット画面／大きな場面変化（遷移スパイク）
+3. 上記が空なら時間フォールバック（既定 90 秒）
+
+analyzer:
+- ラウンドごとにキーフレーム抽出 + Ollama（JSON）で facts / lessons / emotional / highlight
+- 試合単位で詳細分析を再生成して `video_matches` に保存
 
 #### 取り込み契約（ADR-008）
 
@@ -49,7 +58,8 @@ media/
 
 - バイナリは HTTP で送らない。Pi はプロキシしない。
 - 登録後、ingest API が `work/<jobId>/` へ move し、Valorant segmenter `Job` を起動する。
-- 第1実装のカット点はスタブ可。後で OpenCV ロゴ検出に置換する。
+- カット点は OpenCV ロゴ検出 → 遷移スパイク → 時間フォールバック。
+- analyzer はホスト Ollama（既定 `qwen3.5:9b`）でラウンド／試合メモを生成する。
 
 #### Teamfight Tactics (TFT) pipeline（後続）1. **時間基準**でセグメントに分割する。
 2. セグメント単位で分析 Job を起動する。
